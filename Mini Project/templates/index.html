@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Surplus Food Redistribution System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .subtitle {
+            font-size: 1.2em;
+            color: #7f8c8d;
+            margin: 20px 0;
+        }
+        .benefits-section {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .benefits-text {
+            color: #2c3e50;
+            font-size: 1.1em;
+        }
+        .how-it-works {
+            margin-top: 50px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+        .how-it-works h3 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .how-it-works-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .how-it-works-item {
+            text-align: center;
+            padding: 15px;
+        }
+        .how-it-works-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        .how-it-works-item h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .how-it-works-item p {
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍽️ Smart Surplus Food Redistribution System</h1>
+        <p class="text-center subtitle">
+            Reducing food waste through real-time surplus food sharing
+        </p>
+        
+        <div class="benefits-section">
+            <p class="benefits-text">
+                🌍 Help reduce food waste and save the planet<br>
+                💰 Get delicious food at discounted prices<br>
+                🤝 Connect local businesses with the community
+            </p>
+        </div>
+        
+        <div class="home-buttons">
+            <a href="/vendor">🏪 I'm a Vendor</a>
+            <a href="/user">🛒 I'm Looking for Food</a>
+        </div>
+        
+        <div class="how-it-works">
+            <h3>How It Works</h3>
+            <div class="how-it-works-grid">
+                <div class="how-it-works-item">
+                    <div class="how-it-works-icon">📝</div>
+                    <h4>Vendors List Surplus</h4>
+                    <p>Restaurants, bakeries, and cafes list their surplus food before closing time</p>
+                </div>
+                <div class="how-it-works-item">
+                    <div class="how-it-works-icon">📍</div>
+                    <h4>Users Find Nearby Deals</h4>
+                    <p>Browse available food on an interactive map and find great deals nearby</p>
+                </div>
+                <div class="how-it-works-item">
+                    <div class="how-it-works-icon">✅</div>
+                    <h4>Pick Up & Save</h4>
+                    <p>Pick up your discounted food before the deadline and reduce waste</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

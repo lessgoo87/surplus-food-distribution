@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendor Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor_dashboard.css') }}">
+</head>
+<body>
+    <div class="container">
+        <a href="/vendor" class="back-link">← Add New Item</a>
+        
+        <h1>📊 Vendor Dashboard</h1>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">{{ food_items|length }}</div>
+                <div class="stat-label">Active Listings</div>
+            </div>
+            <div class="stat-card stat-card-green">
+                <div class="stat-value">
+                    {% set flash_count = food_items|selectattr('flash_sale', 'equalto', 1)|list|length %}
+                    {{ flash_count }}
+                </div>
+                <div class="stat-label">Flash Sales</div>
+            </div>
+            <div class="stat-card stat-card-orange">
+                <div class="stat-value">
+                    {% set total_items = food_items|sum(attribute='quantity') %}
+                    {{ total_items }}
+                </div>
+                <div class="stat-label">Total Items</div>
+            </div>
+        </div>
+
+        <h2>Your Active Listings</h2>
+        
+        {% if food_items|length == 0 %}
+        <div class="empty-state">
+            <p class="empty-state-text">No active listings yet</p>
+            <a href="/vendor" class="btn btn-empty-state">
+                Add Your First Item
+            </a>
+        </div>
+        {% else %}
+        <table class="dashboard-table">
+            <thead>
+                <tr>
+                    <th>Food Item</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Quantity</th>
+                    <th>Location</th>
+                    <th>Flash Sale</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in food_items %}
+                <tr>
+                    <td>
+                        <strong>{{ item['name'] }}</strong>
+                        {% if item['description'] %}
+                        <br><small class="description-text">{{ item['description'][:50] }}...</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="category-badge">{{ item['category'] or 'N/A' }}</span>
+                    </td>
+                    <td>
+                        {% if item['original_price'] and item['original_price'] > 0 %}
+                        <span class="original-price">₹{{ item['original_price'] }}</span><br>
+                        {% endif %}
+                        <span class="discounted-price">₹{{ item['discounted_price'] }}</span>
+                        {% if item['original_price'] and item['original_price'] > 0 %}
+                        <br><small class="discount-percentage">
+                            {{ ((item['original_price'] - item['discounted_price']) / item['original_price'] * 100)|int }}% off
+                        </small>
+                        {% endif %}
+                    </td>
+                    <td>{{ item['quantity'] }}</td>
+                    <td>{{ item['location'] }}</td>
+                    <td>
+                        {% if item['flash_sale'] == 1 %}
+                        <span class="flash-sale-yes">⚡ Yes</span>
+                        {% else %}
+                        <span class="flash-sale-no">No</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="POST" action="/vendor/delete/{{ item['id'] }}" class="delete-form">
+                            <button type="submit" class="btn btn-danger btn-small" 
+                                    onclick="return confirm('Are you sure you want to delete this item?')">
+                                🗑️ Delete
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+</body>
+</html>
