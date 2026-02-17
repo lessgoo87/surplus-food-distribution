@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Restaurant Login | Sunset Servings</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body class="restaurant-bg">
+
+    <div class="glass-card">
+        <h1>Restaurant Login</h1>
+        <p>Access your restaurant dashboard</p>
+
+        <form method="POST">
+            <input type="email" name="email" placeholder="Email" required><br><br>
+            <input type="password" name="password" placeholder="Password" required><br><br>
+
+            <button type="submit" class="glass-btn">Login</button>
+        </form>
+
+        <br>
+        <a href="/restaurant/register" style="color:white;">
+            Don't have an account? Register
+        </a>
+    </div>
+
+</body>
+</html>

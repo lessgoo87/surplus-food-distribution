@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hungry Customer | Sunset Servings</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #ff7a00, #ff4d00, #ffb347);
+            background-size: 300% 300%;
+            animation: gradientMove 8s ease infinite;
+            color: white;
+        }
+
+        @keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .header {
+            text-align: center;
+            padding: 50px 20px 30px;
+            font-size: 40px;
+            font-weight: bold;
+        }
+
+        .container {
+            width: 85%;
+            margin: auto;
+            padding-bottom: 60px;
+        }
+
+        .food-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 20px;
+            padding: 25px 30px;
+            margin: 20px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+            transition: 0.3s ease;
+        }
+
+        .food-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .food-info h3 {
+            margin: 0 0 8px;
+            font-size: 22px;
+        }
+
+        .food-info p {
+            margin: 4px 0;
+            font-size: 14px;
+        }
+
+        .btn-order {
+            padding: 12px 25px;
+            background: white;
+            border: none;
+            color: #ff4d00;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: 0.3s ease;
+        }
+
+        .btn-order:hover {
+            background: #ffe2d0;
+            transform: scale(1.05);
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <div class="header">Available Surplus Food</div>
+
+    <div class="container">
+
+        <div class="food-card">
+            <div class="food-info">
+                <h3>Chicken Biryani</h3>
+                <p><b>Restaurant:</b> Spice House</p>
+                <p><b>Price:</b> ₹80</p>
+                <p><b>Quantity:</b> 5 plates</p>
+            </div>
+            <button class="btn-order">Order</button>
+        </div>
+
+        <div class="food-card">
+            <div class="food-info">
+                <h3>Veg Fried Rice</h3>
+                <p><b>Restaurant:</b> Green Leaf</p>
+                <p><b>Price:</b> ₹50</p>
+                <p><b>Quantity:</b> 3 plates</p>
+            </div>
+            <button class="btn-order">Order</button>
+        </div>
+
+        <div class="food-card">
+            <div class="food-info">
+                <h3>Pasta Alfredo</h3>
+                <p><b>Restaurant:</b> Italian Corner</p>
+                <p><b>Price:</b> ₹70</p>
+                <p><b>Quantity:</b> 2 bowls</p>
+            </div>
+            <button class="btn-order">Order</button>
+        </div>
+
+    </div>
+
+</body>
+</html>

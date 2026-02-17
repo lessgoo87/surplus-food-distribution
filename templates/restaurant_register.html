@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Register | Sunset Servings</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body class="restaurant-bg">
+
+    <div class="glass-card register-card">
+        <h1>Restaurant Register</h1>
+        <p>Create your restaurant account</p>
+
+        <form method="POST" class="register-form">
+
+            <input type="text" name="name" placeholder="Business Name" required>
+            <input type="text" name="address" placeholder="Business Address" required>
+
+            <input type="text" name="category" placeholder="Category" required>
+            <input type="text" name="phone" placeholder="Phone Number" required>
+
+            <input type="email" name="email" placeholder="Email" required>
+            <input type="password" name="password" placeholder="Password" required>
+
+            <button type="submit" class="glass-btn full-btn">Register</button>
+        </form>
+
+        <a href="/restaurant/login" class="switch-link">
+            Already have an account? Login
+        </a>
+    </div>
+
+</body>
+</html>
