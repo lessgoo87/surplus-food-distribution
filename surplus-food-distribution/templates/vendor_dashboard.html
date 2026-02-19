@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendor Dashboard | Sunset Servings</title>
+    <style>
+        /* Reusing your existing styles */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #000; color: #fff; line-height: 1.6; overflow-x: hidden; }
+        .bg-video { position: fixed; top: 50%; left: 50%; min-width: 100%; min-height: 100%; transform: translate(-50%, -50%); z-index: -2; object-fit: cover; }
+        .global-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: -1; }
+        .container { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; }
+        
+        .glass-panel { 
+            background: rgba(255, 255, 255, 0.1); 
+            backdrop-filter: blur(15px); 
+            border: 1px solid rgba(255, 255, 255, 0.2); 
+            border-radius: 20px; 
+            padding: 40px; 
+            max-width: 600px; 
+            width: 100%; 
+            margin-bottom: 20px;
+        }
+
+        h2 { font-size: 2.5rem; margin-bottom: 10px; text-align: center; color: #e67e22; }
+        .subtitle { text-align: center; margin-bottom: 30px; opacity: 0.8; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; }
+        input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.2); color: #fff; }
+        
+        .btn-submit { width: 100%; padding: 15px; background: #e67e22; color: white; border: none; border-radius: 50px; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        .btn-submit:hover { background: #f39c12; transform: translateY(-3px); }
+
+        .food-list { margin-top: 30px; width: 100%; border-collapse: collapse; }
+        .food-list th, .food-list td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; }
+        .alert { padding: 15px; margin-bottom: 20px; border-radius: 10px; text-align: center; background: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; color: #2ecc71; }
+        .back-link { margin-top: 20px; color: #fff; text-decoration: none; opacity: 0.6; font-size: 0.9rem; }
+
+        /* --- NEW: Notification Bar Styles --- */
+        #order-notification-bar {
+            position: fixed;
+            top: -100px; /* Hidden initially */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            width: 90%;
+            max-width: 500px;
+            background: rgba(230, 126, 34, 0.95); /* Sunset Orange */
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            padding: 15px 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: top 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        #order-notification-bar.show { top: 20px; }
+        .notif-icon { font-size: 1.5rem; }
+        .notif-content { flex-grow: 1; }
+        .notif-content strong { display: block; font-size: 1.1rem; }
+        .notif-content p { font-size: 0.9rem; opacity: 0.9; }
+        .notif-close { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; opacity: 0.7; }
+        .notif-close:hover { opacity: 1; }
+    </style>
+</head>
+<body>
+
+    <div id="order-notification-bar">
+        <span class="notif-icon">🛎️</span>
+        <div class="notif-content">
+            <strong id="notif-message">New Order!</strong>
+            <p id="notif-subtext">Updating details...</p>
+        </div>
+        <button onclick="closeNotif()" class="notif-close">×</button>
+    </div>
+
+    <video autoplay muted loop playsinline class="bg-video">
+        <source src="{{ url_for('static', filename='video/food.mp4') }}" type="video/mp4">
+    </video>
+    <div class="global-overlay"></div>
+
+    <div class="container">
+        <div class="glass-panel">
+            <h2>Vendor Portal</h2>
+            <p class="subtitle">List your surplus food items</p>
+
+            <audio id="notif-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
+
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                {% for message in messages %}
+                  <div class="alert">{{ message }}</div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('vendor_dashboard') }}">
+                <div class="form-group">
+                    <label>Food Name</label>
+                    <input type="text" name="name" placeholder="e.g. Fresh Bagels" required>
+                </div>
+                <div class="form-group">
+                    <label>Discounted Price (₹)</label>
+                    <input type="number" step="0.01" name="price" placeholder="99.00" required>
+                </div>
+                <div class="form-group">
+                    <label>Pickup Location</label>
+                    <input type="text" name="location" placeholder="Shop address" required>
+                </div>
+                <button type="submit" class="btn-submit">Add Listing</button>
+            </form>
+
+            <table class="food-list">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Price</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in food_items %}
+                    <tr>
+                        <td>{{ item.name }}</td>
+                        <td>₹{{ item.discounted_price }}</td>
+                        <td style="color: #2ecc71;">{{ item.status }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <div style="text-align: center;">
+                <a href="/" class="back-link">← Back to Home</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+
+        socket.on('new_order_alert', function(data) {
+            // 1. Play order sound
+            const sound = document.getElementById('notif-sound');
+            sound.play().catch(e => console.log("Sound enabled after user interaction"));
+            
+            // 2. Update Notification Bar Text
+            document.getElementById('notif-message').innerText = data.message;
+            document.getElementById('notif-subtext').innerText = "Amount to collect: ₹" + data.amount;
+            
+            // 3. Slide the bar down
+            const bar = document.getElementById('order-notification-bar');
+            bar.classList.add('show');
+            
+            // 4. Reload page after 5 seconds to update the table
+            setTimeout(() => {
+                location.reload();
+            }, 5000);
+        });
+
+        function closeNotif() {
+            document.getElementById('order-notification-bar').classList.remove('show');
+            location.reload(); // Instant reload if they close manually
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+/* Additional vendor dashboard specific styles */
+
+.back-link {
+    font-size: 1.05em;
+}
+
+.dashboard-table {
+    margin-top: 30px;
+}
+
+.dashboard-table strong {
+    color: #1f2937;
+    font-size: 1.05em;
+}
+
+/* Responsive table on mobile */
+@media (max-width: 1200px) {
+    .dashboard-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+}
+
+/* Action buttons alignment */
+.dashboard-table td form {
+    margin: 0;
+}
+
+.dashboard-table .btn-small {
+    white-space: nowrap;
+}
