@@ -4,49 +4,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Find Food | Sunset Servings</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        body { background-color: #000; color: #fff; line-height: 1.6; overflow-x: hidden; }
+        body { background-color: #000; color: #fff; line-height: 1.6; overflow-x: hidden; padding-bottom: 100px; }
 
-        .bg-video { position: fixed; top: 50%; left: 50%; min-width: 100%; min-height: 100%; width: auto; height: auto; transform: translate(-50%, -50%); z-index: -2; object-fit: cover; }
+        .bg-video { position: fixed; top: 50%; left: 50%; min-width: 100%; min-height: 100%; transform: translate(-50%, -50%); z-index: -2; object-fit: cover; }
         .global-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: -1; }
 
         .container { padding: 40px 20px; max-width: 1200px; margin: auto; }
         .glass-panel { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; padding: 30px; margin-bottom: 30px; }
 
-        /* Header Layout */
         .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        
-        /* Two-Column Layout for Search & Map */
         .top-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
         
-        .search-panel form { display: flex; flex-direction: column; gap: 15px; }
-        .form-group { display: flex; flex-direction: column; }
-        input { padding: 12px; border-radius: 10px; border: none; background: rgba(255, 255, 255, 0.2); color: white; margin-top: 5px; outline: none; }
-        input:focus { background: rgba(255, 255, 255, 0.3); border: 1px solid #e67e22; }
+        input { padding: 12px; border-radius: 10px; border: none; background: rgba(255, 255, 255, 0.2); color: white; margin-top: 5px; outline: none; width: 100%; }
+        input:focus { border: 1px solid #e67e22; }
 
-        .map-container { width: 100%; height: 100%; min-height: 250px; border-radius: 15px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
+        /* Map Styling */
+        #map { height: 100%; width: 100%; min-height: 300px; border-radius: 15px; z-index: 1; }
 
-        /* Food Grid */
         .food-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
-        .food-card { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 15px; padding: 20px; transition: transform 0.3s ease; }
-        .food-card:hover { transform: translateY(-5px); border-color: #e67e22; }
+        .food-card { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 15px; padding: 20px; transition: 0.3s; }
         .price-tag { color: #e67e22; font-size: 1.5rem; font-weight: bold; margin: 10px 0; }
-
-        .btn { padding: 12px 25px; border: none; border-radius: 50px; color: white; font-weight: 600; cursor: pointer; transition: 0.3s; text-decoration: none; display: inline-block; text-align: center; }
-        .btn-primary { background: #e67e22; }
-        .btn-primary:hover { background: #f39c12; transform: scale(1.02); }
         
-        .btn-nav { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); font-size: 0.9rem; }
-        .btn-nav:hover { background: rgba(255, 255, 255, 0.2); }
-
-        .btn-order { width: 100%; background: transparent; border: 2px solid #e67e22; margin-top: 10px; }
+        .btn { padding: 12px 25px; border-radius: 50px; font-weight: 600; cursor: pointer; transition: 0.3s; text-decoration: none; border: none; color: white; }
+        .btn-primary { background: #e67e22; width: 100%; margin-top: 10px; }
+        .btn-logout { border: 1px solid #e74c3c; color: #e74c3c; }
+        .btn-order { background: transparent; border: 2px solid #e67e22; width: 100%; margin-top: 10px; }
         .btn-order:hover { background: #e67e22; }
 
-        @media (max-width: 768px) { 
-            .top-section { grid-template-columns: 1fr; } 
-            .dashboard-header { flex-direction: column; text-align: center; gap: 15px; }
-        }
+        .cart-footer { position: fixed; bottom: 30px; right: 30px; z-index: 1000; }
+        .btn-cart { background: #e67e22; padding: 15px 30px; display: flex; gap: 10px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+
+        @media (max-width: 768px) { .top-section { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -56,67 +47,72 @@
     </video>
     <div class="global-overlay"></div>
 
+    {% if session.get('cart') %}
+    <div class="cart-footer">
+        <a href="{{ url_for('checkout') }}" class="btn btn-cart">🛒 View Cart <span>{{ session['cart']|length }}</span></a>
+    </div>
+    {% endif %}
+
     <div class="container">
         <header class="dashboard-header">
-            <h1 style="text-shadow: 2px 2px 10px rgba(0,0,0,0.5);">Sunset Servings Dashboard</h1>
-            <a href="{{ url_for('index') }}" class="btn btn-nav">← Back to Home</a>
+            <h1>Sunset Servings</h1>
+            <a href="{{ url_for('logout') }}" class="btn btn-logout">Logout</a>
         </header>
 
         <div class="top-section">
-            <div class="glass-panel search-panel">
-                <h3>Search Filters</h3>
-                <form method="GET" action="{{ url_for('customer_home') }}">
-                    <div class="form-group">
-                        <label>Food Name</label>
-                        <input type="text" name="food" placeholder="e.g. Sushi" value="{{ request.args.get('food', '') }}">
-                    </div>
-                    <div class="form-group">
-                        <label>Location</label>
-                        <input type="text" name="location" placeholder="e.g. Kochi" value="{{ request.args.get('location', '') }}">
-                    </div>
-                    <button type="submit" class="btn btn-primary">Refresh Results</button>
+            <div class="glass-panel">
+                <h3>Find Food</h3>
+                <form method="GET">
+                    <input type="text" name="food" placeholder="Food item..." value="{{ request.args.get('food', '') }}">
+                    <input type="text" name="location" placeholder="Location..." value="{{ request.args.get('location', '') }}">
+                    <button type="submit" class="btn btn-primary">Search</button>
                 </form>
             </div>
 
-            <div class="glass-panel" style="padding: 15px;">
-                <div class="map-container">
-                    {% if foods|length > 0 %}
-                    <iframe
-                        width="100%"
-                        height="100%"
-                        style="border:0;"
-                        loading="lazy"
-                        allowfullscreen
-                        src="https://maps.google.com/maps?q={{ foods[0].location | urlencode }}&t=&z=13&ie=UTF8&iwloc=&output=embed">
-                    </iframe>
-                    {% else %}
-                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: rgba(0,0,0,0.3);">
-                        <p>No listings available to show on map.</p>
-                    </div>
-                    {% endif %}
-                </div>
+            <div class="glass-panel" style="padding: 10px;">
+                <div id="map"></div>
             </div>
         </div>
 
-        <h2 style="margin-bottom: 20px;">Available Surplus Food</h2>
+        <h2>Available Surplus Food</h2>
         <div class="food-grid">
             {% for food in foods %}
             <div class="food-card">
                 <h3>{{ food.name }}</h3>
-                <p style="opacity: 0.8; font-size: 0.9rem;">📍 {{ food.location }}</p>
+                <p>📍 {{ food.location }}</p>
                 <p class="price-tag">₹{{ food.discounted_price }}</p>
-                
-                <form action="{{ url_for('order_item', food_id=food.id) }}" method="POST">
-                    <button type="submit" class="btn btn-order">Order Now</button>
+                <form action="{{ url_for('add_to_cart', food_id=food.id) }}" method="POST">
+                    <input type="number" name="order_quantity" value="1" min="1" max="{{ food.quantity }}" style="width: 60px; margin-bottom: 10px;">
+                    <button type="submit" class="btn btn-order">Add to Cart</button>
                 </form>
-            </div>
-            {% else %}
-            <div class="glass-panel" style="grid-column: 1 / -1; text-align: center;">
-                <p>No surplus food found right now. Check back soon!</p>
             </div>
             {% endfor %}
         </div>
     </div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([10.8505, 76.2711], 7);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        const locations = {{ locations_json | tojson }};
+        const markers = [];
+
+        async function addPins() {
+            for (const loc of locations) {
+                try {
+                    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(loc.address)}`);
+                    const data = await response.json();
+                    if (data.length > 0) {
+                        const marker = L.marker([data[0].lat, data[0].lon]).addTo(map);
+                        marker.bindPopup(`<b>${loc.restaurant_name}</b><br>${loc.food_name}<br>₹${loc.price}`);
+                        markers.push([data[0].lat, data[0].lon]);
+                    }
+                } catch (e) { console.error(e); }
+            }
+            if (markers.length > 0) map.fitBounds(markers);
+        }
+        addPins();
+    </script>
 </body>
 </html>

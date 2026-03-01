@@ -1,10 +1,22 @@
 import sqlite3
+import os
 
-# Create database
-conn = sqlite3.connect('database.db')
+# Define database path
+db_path = os.path.join(os.path.dirname(__file__), 'database.db')
+
+# Force a clean start by removing the old DB if it exists
+if os.path.exists(db_path):
+    try:
+        os.remove(db_path)
+        print("Existing database removed.")
+    except PermissionError:
+        print("❌ ERROR: Close your Flask server or DB viewers before running this!")
+        exit()
+
+conn = sqlite3.connect(db_path)
 c = conn.cursor()
 
-# Create users table
+# 1. Create users table
 c.execute('''CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
@@ -12,7 +24,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS users (
                 password TEXT NOT NULL
             )''')
 
-# Create restaurants table (UPDATED)
+# 2. Create restaurants table
 c.execute('''CREATE TABLE IF NOT EXISTS restaurants (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
@@ -23,17 +35,36 @@ c.execute('''CREATE TABLE IF NOT EXISTS restaurants (
                 password TEXT NOT NULL
             )''')
 
-# Create surplus food table
+# 3. Create food table
 c.execute('''CREATE TABLE IF NOT EXISTS food (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 restaurant_id INTEGER,
-                item_name TEXT NOT NULL,
-                price REAL NOT NULL,
-                
+                name TEXT NOT NULL,
+                discounted_price REAL NOT NULL,
+                quantity INTEGER DEFAULT 1,
+                status TEXT NOT NULL DEFAULT 'available',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(restaurant_id) REFERENCES restaurants(id)
+            )''')
+
+# 4. NEW: Create orders table for Token System
+# This table stores the transaction history and the unique pickup token.
+c.execute('''CREATE TABLE IF NOT EXISTS orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                food_id INTEGER,
+                restaurant_id INTEGER,
+                quantity INTEGER NOT NULL,
+                total_price REAL NOT NULL,
+                token TEXT NOT NULL,
+                status TEXT DEFAULT 'pending', -- 'pending' or 'collected'
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id),
+                FOREIGN KEY(food_id) REFERENCES food(id),
                 FOREIGN KEY(restaurant_id) REFERENCES restaurants(id)
             )''')
 
 conn.commit()
 conn.close()
 
-print("Database created successfully!")
+print("✅ Database created successfully with the new Orders/Token table!")

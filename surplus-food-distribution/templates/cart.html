@@ -1,0 +1,24 @@
+<div class="glass-card" style="max-width: 800px; margin: auto;">
+    <h2>Your Cart</h2>
+    {% for item in items %}
+    <div class="row" style="border-bottom: 1px solid #444; padding: 15px 0;">
+        <div>
+            <strong>{{ item.name }}</strong> ({{ item.restaurant }})<br>
+            <small>₹{{ item.price }} x {{ item.qty }}</small>
+        </div>
+        <div>₹{{ "%.2f"|format(item.total) }}</div>
+    </div>
+    {% endfor %}
+    
+    <div class="row total-row" style="font-size: 1.8rem; margin-top: 20px; color: #e67e22;">
+        <span>Grand Total:</span>
+        <span>₹{{ "%.2f"|format(grand_total) }}</span>
+    </div>
+
+    <div class="btn-container" style="display: flex; gap: 20px; margin-top: 30px;">
+        <a href="{{ url_for('customer_home') }}" class="btn btn-cancel" style="flex: 1;">Keep Shopping</a>
+        <form action="{{ url_for('confirm_cart_order') }}" method="POST" style="flex: 1;">
+            <button type="submit" class="btn btn-confirm" style="width: 100%;">Confirm All Orders</button>
+        </form>
+    </div>
+</div>
