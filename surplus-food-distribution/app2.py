@@ -93,9 +93,13 @@ def restaurant_register():
         phone = request.form.get('phone', '').strip()
         email = request.form.get('email', '').strip()
         password = request.form.get('password', '')
+        
+        # CAPTURE COORDINATES FROM MAP PICKER
+        lat = request.form.get('lat')
+        lon = request.form.get('lon')
 
-        if not all([name, email, address, password]):
-            flash("Critical fields are missing!")
+        if not all([name, email, address, password, lat, lon]):
+            flash("Please fill all fields and pin your location on the map!")
             return redirect(url_for('restaurant_register'))
 
         valid, msg = is_valid_email(email)
@@ -105,10 +109,11 @@ def restaurant_register():
 
         conn = get_db_connection()
         try:
+            # SAVING LAT/LON TO DB
             conn.execute("""
-                INSERT INTO restaurants (name, email, address, password, category, phone) 
-                VALUES (?, ?, ?, ?, ?, ?)""",
-                (name, email, address, password, category, phone))
+                INSERT INTO restaurants (name, email, address, password, category, phone, lat, lon) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (name, email, address, password, category, phone, lat, lon))
             conn.commit()
             flash("Restaurant registered successfully! Please login.")
             return redirect(url_for('restaurant_login'))
@@ -132,8 +137,9 @@ def customer_home():
     location_query = request.args.get('location', '')
     
     conn = get_db_connection()
+    # PULLING LAT/LON FROM DB
     query = """
-        SELECT f.*, r.name as restaurant_name, r.address as location 
+        SELECT f.*, r.name as restaurant_name, r.address as location, r.lat, r.lon
         FROM food f 
         JOIN restaurants r ON f.restaurant_id = r.id 
         WHERE f.status='available' AND f.quantity > 0
@@ -149,13 +155,16 @@ def customer_home():
     foods = conn.execute(query + " ORDER BY f.id DESC", params).fetchall()
     conn.close()
 
+    # PASSING COORDINATES DIRECTLY TO MAP
     locations_data = [
         {
             'food_name': row['name'],
             'restaurant_name': row['restaurant_name'],
             'address': row['location'],
+            'lat': row['lat'],
+            'lon': row['lon'],
             'price': row['discounted_price']
-        } for row in foods
+        } for row in foods if row['lat'] is not None
     ]
 
     return render_template("customer_home.html", foods=foods, locations_json=locations_data)
@@ -334,16 +343,15 @@ def restaurant_login():
 
 # ================= DATABASE AUTO-FIX =================
 def ensure_columns_exist():
-    """Run this to ensure Category and Phone columns exist in the DB."""
+    """Run this to ensure all required columns exist in the DB."""
     conn = get_db_connection()
     try:
-        # Check restaurants table
         conn.execute("ALTER TABLE restaurants ADD COLUMN category TEXT")
         conn.execute("ALTER TABLE restaurants ADD COLUMN phone TEXT")
-        # Check orders table (for grouping logic)
+        conn.execute("ALTER TABLE restaurants ADD COLUMN lat REAL") # ADDED LAT
+        conn.execute("ALTER TABLE restaurants ADD COLUMN lon REAL") # ADDED LON
         conn.execute("ALTER TABLE orders ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
         conn.commit()
-        print("Database schema checked and updated.")
     except Exception:
         pass
     finally:

@@ -9,6 +9,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background-color: #000; color: #fff; line-height: 1.6; overflow-x: hidden; padding-bottom: 100px; }
 
+        /* Video Background Styling */
         .bg-video { position: fixed; top: 50%; left: 50%; min-width: 100%; min-height: 100%; transform: translate(-50%, -50%); z-index: -2; object-fit: cover; }
         .global-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: -1; }
 
@@ -21,21 +22,26 @@
         input { padding: 12px; border-radius: 10px; border: none; background: rgba(255, 255, 255, 0.2); color: white; margin-top: 5px; outline: none; width: 100%; }
         input:focus { border: 1px solid #e67e22; }
 
-        /* Map Styling */
-        #map { height: 100%; width: 100%; min-height: 300px; border-radius: 15px; z-index: 1; }
+        /* Map Container */
+        #map { height: 100%; width: 100%; min-height: 350px; border-radius: 15px; z-index: 1; border: 1px solid rgba(255,255,255,0.1); }
 
+        /* Food Grid Styling */
         .food-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
         .food-card { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 15px; padding: 20px; transition: 0.3s; }
+        .food-card:hover { transform: translateY(-5px); background: rgba(255, 255, 255, 0.15); }
         .price-tag { color: #e67e22; font-size: 1.5rem; font-weight: bold; margin: 10px 0; }
         
-        .btn { padding: 12px 25px; border-radius: 50px; font-weight: 600; cursor: pointer; transition: 0.3s; text-decoration: none; border: none; color: white; }
+        /* Buttons */
+        .btn { padding: 12px 25px; border-radius: 50px; font-weight: 600; cursor: pointer; transition: 0.3s; text-decoration: none; border: none; color: white; display: inline-block; text-align: center; }
         .btn-primary { background: #e67e22; width: 100%; margin-top: 10px; }
-        .btn-logout { border: 1px solid #e74c3c; color: #e74c3c; }
+        .btn-logout { border: 1px solid #e74c3c; color: #e74c3c; background: transparent; }
+        .btn-logout:hover { background: #e74c3c; color: #fff; }
         .btn-order { background: transparent; border: 2px solid #e67e22; width: 100%; margin-top: 10px; }
         .btn-order:hover { background: #e67e22; }
 
+        /* Floating Cart Footer */
         .cart-footer { position: fixed; bottom: 30px; right: 30px; z-index: 1000; }
-        .btn-cart { background: #e67e22; padding: 15px 30px; display: flex; gap: 10px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+        .btn-cart { background: #e67e22; padding: 15px 30px; display: flex; gap: 10px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); border-radius: 50px; }
 
         @media (max-width: 768px) { .top-section { grid-template-columns: 1fr; } }
     </style>
@@ -63,9 +69,9 @@
             <div class="glass-panel">
                 <h3>Find Food</h3>
                 <form method="GET">
-                    <input type="text" name="food" placeholder="Food item..." value="{{ request.args.get('food', '') }}">
-                    <input type="text" name="location" placeholder="Location..." value="{{ request.args.get('location', '') }}">
-                    <button type="submit" class="btn btn-primary">Search</button>
+                    <input type="text" name="food" placeholder="What are you craving?" value="{{ request.args.get('food', '') }}">
+                    <input type="text" name="location" placeholder="Near which area?" value="{{ request.args.get('location', '') }}">
+                    <button type="submit" class="btn btn-primary">Search Now</button>
                 </form>
             </div>
 
@@ -74,7 +80,7 @@
             </div>
         </div>
 
-        <h2>Available Surplus Food</h2>
+        <h2>Surplus Food Near You</h2>
         <div class="food-grid">
             {% for food in foods %}
             <div class="food-card">
@@ -82,7 +88,8 @@
                 <p>📍 {{ food.location }}</p>
                 <p class="price-tag">₹{{ food.discounted_price }}</p>
                 <form action="{{ url_for('add_to_cart', food_id=food.id) }}" method="POST">
-                    <input type="number" name="order_quantity" value="1" min="1" max="{{ food.quantity }}" style="width: 60px; margin-bottom: 10px;">
+                    <input type="number" name="order_quantity" value="1" min="1" max="{{ food.quantity }}" 
+                           style="width: 70px; margin-bottom: 10px; padding: 5px; border-radius: 5px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2);">
                     <button type="submit" class="btn btn-order">Add to Cart</button>
                 </form>
             </div>
@@ -92,26 +99,51 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // 1. Initialize map centered on Kerala
         const map = L.map('map').setView([10.8505, 76.2711], 7);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
 
+        // 2. Load coordinates directly from the database
         const locations = {{ locations_json | tojson }};
-        const markers = [];
+        
+        function addPins() {
+            const markerCoords = [];
 
-        async function addPins() {
-            for (const loc of locations) {
-                try {
-                    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(loc.address)}`);
-                    const data = await response.json();
-                    if (data.length > 0) {
-                        const marker = L.marker([data[0].lat, data[0].lon]).addTo(map);
-                        marker.bindPopup(`<b>${loc.restaurant_name}</b><br>${loc.food_name}<br>₹${loc.price}`);
-                        markers.push([data[0].lat, data[0].lon]);
-                    }
-                } catch (e) { console.error(e); }
+            locations.forEach(loc => {
+                // Only create pins if Lat/Lon coordinates exist in DB
+                if (loc.lat && loc.lon) {
+                    const lat = parseFloat(loc.lat);
+                    const lon = parseFloat(loc.lon);
+
+                    // Create marker and detailed popup instantly
+                    const marker = L.marker([lat, lon]).addTo(map);
+                    marker.bindPopup(`
+                        <div style="color: #000; font-family: sans-serif;">
+                            <strong style="color: #e67e22; font-size: 1rem;">${loc.restaurant_name}</strong><br>
+                            <span style="display:block; margin: 5px 0;">🍴 ${loc.food_name}</span>
+                            <b style="font-size: 1.1rem;">₹${loc.price}</b><br>
+                            <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}" 
+                               target="_blank" 
+                               style="color: #3498db; text-decoration: none; font-size: 0.8rem; font-weight: bold; display: block; margin-top: 8px;">
+                               Get Directions →
+                            </a>
+                        </div>
+                    `);
+                    
+                    markerCoords.push([lat, lon]);
+                }
+            });
+
+            // 3. Automatically adjust map zoom to fit all visible markers
+            if (markerCoords.length > 0) {
+                const bounds = L.latLngBounds(markerCoords);
+                map.fitBounds(bounds, { padding: [50, 50] });
             }
-            if (markers.length > 0) map.fitBounds(markers);
         }
+
+        // Execute pin placement immediately
         addPins();
     </script>
 </body>
