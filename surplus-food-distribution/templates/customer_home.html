@@ -36,6 +36,11 @@
         .btn-primary { background: #e67e22; width: 100%; margin-top: 10px; }
         .btn-logout { border: 1px solid #e74c3c; color: #e74c3c; background: transparent; }
         .btn-logout:hover { background: #e74c3c; color: #fff; }
+        
+        /* My Orders Button Styling */
+        .btn-history { background: rgba(255,255,255,0.1); border: 1px solid #e67e22; color: #e67e22; margin-right: 10px; }
+        .btn-history:hover { background: #e67e22; color: #fff; }
+
         .btn-order { background: transparent; border: 2px solid #e67e22; width: 100%; margin-top: 10px; }
         .btn-order:hover { background: #e67e22; }
 
@@ -45,6 +50,15 @@
 
         @media (max-width: 768px) { .top-section { grid-template-columns: 1fr; } }
     </style>
+
+    <script>
+        // Anti-Reload Security Guard
+        window.onpageshow = function(event) {
+            if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+                window.location.reload();
+            }
+        };
+    </script>
 </head>
 <body>
 
@@ -62,7 +76,10 @@
     <div class="container">
         <header class="dashboard-header">
             <h1>Sunset Servings</h1>
-            <a href="{{ url_for('logout') }}" class="btn btn-logout">Logout</a>
+            <div style="display: flex; align-items: center;">
+                <a href="{{ url_for('customer_orders') }}" class="btn btn-history">📋 My Orders</a>
+                <a href="{{ url_for('logout') }}" class="btn btn-logout">Logout</a>
+            </div>
         </header>
 
         <div class="top-section">
@@ -99,34 +116,34 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // 1. Initialize map centered on Kerala
         const map = L.map('map').setView([10.8505, 76.2711], 7);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        // 2. Load coordinates directly from the database
         const locations = {{ locations_json | tojson }};
         
         function addPins() {
             const markerCoords = [];
 
             locations.forEach(loc => {
-                // Only create pins if Lat/Lon coordinates exist in DB
                 if (loc.lat && loc.lon) {
                     const lat = parseFloat(loc.lat);
                     const lon = parseFloat(loc.lon);
 
-                    // Create marker and detailed popup instantly
                     const marker = L.marker([lat, lon]).addTo(map);
+                    
+                    // Correct Universal Maps URL format
+                    const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
+                    
                     marker.bindPopup(`
-                        <div style="color: #000; font-family: sans-serif;">
+                        <div style="color: #000; font-family: sans-serif; min-width: 150px;">
                             <strong style="color: #e67e22; font-size: 1rem;">${loc.restaurant_name}</strong><br>
                             <span style="display:block; margin: 5px 0;">🍴 ${loc.food_name}</span>
                             <b style="font-size: 1.1rem;">₹${loc.price}</b><br>
-                            <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}" 
+                            <a href="${googleMapsUrl}" 
                                target="_blank" 
-                               style="color: #3498db; text-decoration: none; font-size: 0.8rem; font-weight: bold; display: block; margin-top: 8px;">
+                               style="color: #fff; background: #e67e22; text-decoration: none; font-size: 0.8rem; font-weight: bold; display: block; margin-top: 10px; padding: 8px; border-radius: 5px; text-align: center;">
                                Get Directions →
                             </a>
                         </div>
@@ -136,14 +153,12 @@
                 }
             });
 
-            // 3. Automatically adjust map zoom to fit all visible markers
             if (markerCoords.length > 0) {
                 const bounds = L.latLngBounds(markerCoords);
                 map.fitBounds(bounds, { padding: [50, 50] });
             }
         }
 
-        // Execute pin placement immediately
         addPins();
     </script>
 </body>

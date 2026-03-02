@@ -25,7 +25,7 @@
             overflow-y: auto;
         }
 
-        .icon-success { font-size: 4rem; color: #2ecc71; margin-bottom: 20px; display: block; }
+        .icon-success { font-size: 4rem; color: #2ecc71; margin-bottom: 10px; display: block; }
         h1 { font-size: 2rem; margin-bottom: 10px; color: #fff; }
         
         .token-container {
@@ -33,7 +33,7 @@
             border: 2px dashed #e67e22;
             border-radius: 15px;
             padding: 20px;
-            margin: 25px 0;
+            margin: 20px 0;
         }
         .token-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; color: #e67e22; margin-bottom: 5px; }
         .token-value { font-size: 3rem; font-weight: 800; letter-spacing: 8px; color: #fff; text-shadow: 0 0 15px rgba(230, 126, 34, 0.5); }
@@ -42,7 +42,7 @@
             background: rgba(0, 0, 0, 0.3);
             border-radius: 15px;
             padding: 20px;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             text-align: left;
         }
 
@@ -63,7 +63,7 @@
 
         .btn-home {
             display: inline-block;
-            padding: 15px 35px;
+            padding: 15px 25px;
             background: #e67e22;
             color: white;
             text-decoration: none;
@@ -71,11 +71,31 @@
             font-weight: 600;
             transition: 0.3s;
             width: 100%;
+            margin-bottom: 10px;
+        }
+        .btn-history {
+            display: inline-block;
+            padding: 12px 25px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            width: 100%;
         }
 
         .btn-home:hover { background: #f39c12; transform: translateY(-3px); }
         .pickup-note { font-size: 0.85rem; opacity: 0.7; margin-top: 15px; line-height: 1.4; }
     </style>
+    <script>
+        // Security logic for browser navigation
+        window.onpageshow = function(event) {
+            if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+                window.location.reload();
+            }
+        };
+    </script>
 </head>
 <body>
 
@@ -94,7 +114,7 @@
         </div>
 
         <div class="order-details">
-            <h3 style="margin-bottom: 15px; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; color: #e67e22;">Items in this Parcel</h3>
+            <h3 style="margin-bottom: 15px; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; color: #e67e22;">Parcel Summary</h3>
             
             <div class="item-list">
                 {% for item in items %}
@@ -106,7 +126,7 @@
             </div>
 
             <div class="total-row">
-                <span>Total Amount:</span>
+                <span>Total:</span>
                 <span>₹{{ "%.2f"|format(amount) }}</span>
             </div>
             
@@ -115,12 +135,13 @@
             </p>
         </div>
 
-        <a href="{{ url_for('customer_home') }}" class="btn-home">Back to Dashboard</a>
+        <a href="{{ url_for('customer_home') }}" class="btn-home">Explore More Food</a>
+        <a href="{{ url_for('customer_orders') }}" class="btn-history">📋 View Order History</a>
         
         <p class="pickup-note">
-            Please show this <strong>Token</strong> at the hotel counter to collect your items and complete your payment.
+            Please show this <strong>Token</strong> at the counter to collect your items. 
+            Don't worry, you can find this code in <strong>Order History</strong> later.
         </p>
     </div>
-
 </body>
 </html>

@@ -24,7 +24,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS users (
                 password TEXT NOT NULL
             )''')
 
-# 2. Create restaurants table
+# 2. Create restaurants table with lat and lon
 c.execute('''CREATE TABLE IF NOT EXISTS restaurants (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
@@ -32,7 +32,9 @@ c.execute('''CREATE TABLE IF NOT EXISTS restaurants (
                 category TEXT NOT NULL,
                 phone TEXT NOT NULL,
                 email TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL
+                password TEXT NOT NULL,
+                lat REAL,
+                lon REAL
             )''')
 
 # 3. Create food table
@@ -47,8 +49,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS food (
                 FOREIGN KEY(restaurant_id) REFERENCES restaurants(id)
             )''')
 
-# 4. NEW: Create orders table for Token System
-# This table stores the transaction history and the unique pickup token.
+# 4. Create orders table for Token System
 c.execute('''CREATE TABLE IF NOT EXISTS orders (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER,
@@ -57,7 +58,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS orders (
                 quantity INTEGER NOT NULL,
                 total_price REAL NOT NULL,
                 token TEXT NOT NULL,
-                status TEXT DEFAULT 'pending', -- 'pending' or 'collected'
+                status TEXT DEFAULT 'pending',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(user_id) REFERENCES users(id),
                 FOREIGN KEY(food_id) REFERENCES food(id),
@@ -67,4 +68,4 @@ c.execute('''CREATE TABLE IF NOT EXISTS orders (
 conn.commit()
 conn.close()
 
-print("✅ Database created successfully with the new Orders/Token table!")
+print("✅ Database created successfully with LAT/LON columns and the Orders table!")

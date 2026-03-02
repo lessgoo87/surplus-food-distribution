@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Orders | Sunset Servings</title>
+    <style>
+        /* Maintaining your high-quality glassmorphism theme */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #000; color: #fff; line-height: 1.6; }
+        .bg-video { position: fixed; top: 50%; left: 50%; min-width: 100%; min-height: 100%; transform: translate(-50%, -50%); z-index: -2; object-fit: cover; opacity: 0.4; }
+        .global-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: -1; }
+        .container { padding: 40px 20px; max-width: 800px; margin: auto; }
+        
+        .order-card { 
+            background: rgba(255, 255, 255, 0.1); 
+            backdrop-filter: blur(15px); 
+            border: 1px solid rgba(255, 255, 255, 0.2); 
+            border-radius: 20px; 
+            padding: 25px; 
+            margin-bottom: 20px;
+            transition: 0.3s;
+        }
+        .order-card:hover { transform: scale(1.01); border-color: #e67e22; }
+
+        .token-badge { background: #e67e22; color: #fff; padding: 10px 25px; border-radius: 50px; font-weight: bold; font-size: 1.5rem; display: inline-block; margin-top: 10px; box-shadow: 0 0 15px rgba(230, 126, 34, 0.4); }
+        
+        .status-badge { float: right; padding: 5px 15px; border-radius: 50px; font-size: 0.8rem; text-transform: uppercase; font-weight: bold; }
+        .status-pending { background: rgba(243, 156, 18, 0.2); border: 1px solid #f39c12; color: #f39c12; }
+        .status-collected { background: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; color: #2ecc71; }
+        
+        .btn-maps { 
+            display: block; width: 100%; text-align: center; padding: 12px; margin-top: 20px;
+            background: transparent; border: 2px solid #e67e22; color: #e67e22; 
+            border-radius: 12px; text-decoration: none; font-weight: 600; transition: 0.3s;
+        }
+        .btn-maps:hover { background: #e67e22; color: #fff; }
+        .back-link { color: #e67e22; text-decoration: none; font-weight: bold; display: inline-block; margin-bottom: 20px; }
+    </style>
+    
+    <script>
+        // Anti-Reload Security Guard
+        window.onpageshow = function(event) {
+            if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+                window.location.reload();
+            }
+        };
+    </script>
+</head>
+<body>
+    <video autoplay muted loop playsinline class="bg-video">
+        <source src="{{ url_for('static', filename='video/food.mp4') }}" type="video/mp4">
+    </video>
+    <div class="global-overlay"></div>
+
+    <div class="container">
+        <a href="{{ url_for('customer_home') }}" class="back-link">← Back to Explore Food</a>
+        <h1 style="margin-bottom: 30px; font-size: 2.5rem;">Your Pickup Tokens</h1>
+
+        {% if not orders %}
+            <div class="order-card" style="text-align: center;">
+                <p style="font-size: 1.2rem; opacity: 0.7;">No orders found yet. Save your first meal now!</p>
+            </div>
+        {% else %}
+            {% for token, details in orders.items() %}
+            <div class="order-card">
+                <span class="status-badge {% if details.status == 'pending' %}status-pending{% else %}status-collected{% endif %}">
+                    {{ details.status }}
+                </span>
+                
+                <p style="opacity: 0.6; font-size: 0.8rem;">Date: {{ details.date }}</p>
+                <h2 style="color: #e67e22; margin: 10px 0;">{{ details.restaurant }}</h2>
+                <p style="opacity: 0.9;">📍 {{ details.address }}</p>
+                
+                <div style="margin: 20px 0; border-left: 3px solid #e67e22; padding-left: 15px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 0 15px 15px 0;">
+                    {% for item in details['items'] %}
+                        <p style="margin-bottom: 5px;">{{ item.name }} <span style="opacity: 0.6;">x{{ item.qty }}</span></p>
+                    {% endfor %}
+                    <p style="margin-top: 10px; font-weight: bold; font-size: 1.2rem;">Total Amount: ₹{{ "%.2f"|format(details.total_amount) }}</p>
+                </div>
+
+                <div style="text-align: center; margin: 20px 0;">
+                    <p style="font-size: 0.7rem; letter-spacing: 2px; opacity: 0.6; margin-bottom: 5px;">SHOW THIS CODE AT HOTEL COUNTER</p>
+                    <div class="token-badge">{{ token }}</div>
+                </div>
+
+                <a href="https://www.google.com/maps/search/?api=1&query={{ details.lat }},{{ details.lon }}" 
+                   target="_blank" class="btn-maps">
+                    🗺️ Get Directions to Restaurant
+                </a>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+</body>
+</html>
