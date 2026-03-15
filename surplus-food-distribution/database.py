@@ -5,13 +5,13 @@ import os
 db_path = os.path.join(os.path.dirname(__file__), 'database.db')
 
 # Force a clean start by removing the old DB if it exists
-if os.path.exists(db_path):
-    try:
-        os.remove(db_path)
-        print("Existing database removed.")
-    except PermissionError:
-        print("❌ ERROR: Close your Flask server or DB viewers before running this!")
-        exit()
+# if os.path.exists(db_path):
+#     try:
+#         os.remove(db_path)
+#         print("Existing database removed.")
+#     except PermissionError:
+#         print("❌ ERROR: Close your Flask server or DB viewers before running this!")
+#         exit()
 
 conn = sqlite3.connect(db_path)
 c = conn.cursor()

@@ -1,42 +1,174 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Customer Login | Sunset Servings</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* Ensuring consistency with the new 'Beautified' theme */
+        body.restaurant-bg {
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* Glassmorphism Card */
+        .glass-card {
+            background: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(230, 126, 34, 0.2);
+            padding: 50px 40px;
+            border-radius: 30px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(180deg, #fff, #e67e22);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 900;
+            margin-bottom: 10px;
+        }
+
+        p { color: rgba(255,255,255,0.6); font-size: 0.95rem; margin-bottom: 30px; }
+
+        /* FLASH POPUP STYLING */
+        #flash-pop {
+            background: rgba(255, 71, 87, 0.15);
+            border: 1px solid #ff4757;
+            color: #ff4757;
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-weight: 800;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            animation: shake 0.4s ease-in-out;
+            transition: opacity 0.5s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+
+        /* Dark Styled Inputs */
+        input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 15px 20px;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+            transition: 0.3s;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+        }
+
+        input:focus {
+            border-color: #e67e22;
+            background: rgba(230, 126, 34, 0.05);
+            box-shadow: 0 0 15px rgba(230, 126, 34, 0.2);
+        }
+
+        /* Orange Launch Button */
+        .glass-btn {
+            width: 100%;
+            background: #e67e22;
+            color: #fff;
+            border: none;
+            padding: 15px;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: 0.4s;
+            letter-spacing: 1px;
+        }
+
+        .glass-btn:hover {
+            background: #fff;
+            color: #e67e22;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(230, 126, 34, 0.3);
+        }
+
+        .register-link {
+            margin-top: 25px;
+            color: rgba(255,255,255,0.8);
+        }
+
+        .register-link a {
+            color: #e67e22;
+            text-decoration: none;
+            font-weight: 800;
+        }
+
+        .back-link {
+            margin-top: 20px;
+            display: inline-block;
+            color: rgba(255,255,255,0.4);
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: 0.3s;
+        }
+
+        .back-link:hover { color: #fff; }
+    </style>
 </head>
 
 <body class="restaurant-bg">
 
 <div class="glass-card">
-    <h1>Customer Login</h1>
-    <p>Access your account</p>
+    <h1>Login</h1>
+    <p>Enter your credentials to start rescuing.</p>
 
     {% with messages = get_flashed_messages() %}
       {% if messages %}
-        {% for message in messages %}
-          <div style="background: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; color: #2ecc71; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-weight: bold; text-align: center;">
-              {{ message }}
-          </div>
-        {% endfor %}
+        <div id="flash-pop">
+            {% for message in messages %}
+              ⚠️ {{ message }}
+            {% endfor %}
+        </div>
+        <script>
+            // Automatically hide after 4 seconds
+            setTimeout(() => {
+                const pop = document.getElementById('flash-pop');
+                if(pop) {
+                    pop.style.opacity = '0';
+                    setTimeout(() => { pop.style.display = 'none'; }, 500);
+                }
+            }, 4000);
+        </script>
       {% endif %}
     {% endwith %}
 
-    <form method="POST" autocomplete="off">
-        <input type="email" name="email" placeholder="Email" required autocomplete="new-password"><br><br>
-        <input type="password" name="password" placeholder="Password" required autocomplete="new-password"><br><br>
+    <form method="POST" action="{{ url_for('login') }}">
+        <input type="email" name="email" placeholder="Email Address" required autocomplete="email">
+        <input type="password" name="password" placeholder="Password" required autocomplete="current-password">
 
-        <button type="submit" class="glass-btn">Login</button>
+        <button type="submit" class="glass-btn">LOGIN</button>
     </form>
 
-    <br>
-    <p>
-        Don't have an account? 
-        <a href="/register" style="color:white; font-weight:bold;">Register</a>
-    </p>
+    <div class="register-link">
+        Don't have an account? <a href="/register">Register</a>
+    </div>
     
-    <p style="margin-top: 15px;">
-        <a href="/" style="color:rgba(255,255,255,0.7); font-size: 0.9rem; text-decoration: none;">← Back to Home</a>
-    </p>
+    <a href="/" class="back-link">← Return to Home</a>
 </div>
 
 </body>

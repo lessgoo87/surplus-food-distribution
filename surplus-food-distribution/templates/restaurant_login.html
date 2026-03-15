@@ -3,76 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Restaurant Login | Sunset Servings</title>
+    <title>Partner Portal | Sunset Servings</title>
     <style>
-        /* Reusing your global Glassmorphism styles */
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        body { background: #000; color: #fff; overflow: hidden; }
+        /* Modern UI System Alignment */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body { background: #000; color: #fff; overflow: hidden; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
         
-        .bg-video { position: fixed; top: 50%; left: 50%; min-width: 100%; min-height: 100%; transform: translate(-50%, -50%); z-index: -2; object-fit: cover; }
-        .global-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: -1; }
+        .bg-video { position: fixed; top: 50%; left: 50%; min-width: 100%; min-height: 100%; transform: translate(-50%, -50%); z-index: -2; object-fit: cover; filter: brightness(0.4); }
+        .global-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at center, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.85) 100%); z-index: -1; }
 
-        .container { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-        
+        /* Beautified Glass Card */
         .glass-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
-            padding: 40px;
-            max-width: 400px;
+            background: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(25px);
+            border: 1px solid rgba(230, 126, 34, 0.2);
+            border-radius: 30px;
+            padding: 50px 40px;
+            max-width: 420px;
             width: 100%;
             text-align: center;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
         }
 
-        h1 { color: #e67e22; margin-bottom: 10px; font-size: 2rem; }
-        p { margin-bottom: 25px; opacity: 0.8; }
+        /* Branding Typography */
+        h1 { 
+            font-size: 2.8rem; 
+            background: linear-gradient(180deg, #fff 30%, #e67e22 100%); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+            font-weight: 900; 
+            letter-spacing: -1px;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+        
+        .subtitle { 
+            color: #e67e22; 
+            font-size: 0.7rem; 
+            letter-spacing: 3px; 
+            text-transform: uppercase; 
+            font-weight: 700; 
+            margin-bottom: 35px; 
+            opacity: 0.9; 
+        }
 
-        .login-form { display: flex; flex-direction: column; gap: 15px; }
+        .login-form { display: flex; flex-direction: column; gap: 20px; }
 
+        /* High-Tech Inputs */
         input {
             width: 100%;
-            padding: 12px 15px;
-            border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(0, 0, 0, 0.3);
+            padding: 15px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
             color: white;
+            font-size: 1rem;
             outline: none;
+            transition: 0.3s;
         }
 
-        input:focus { border-color: #e67e22; }
+        input:focus { 
+            border-color: #e67e22; 
+            background: rgba(230, 126, 34, 0.05);
+            box-shadow: 0 0 20px rgba(230, 126, 34, 0.15);
+        }
 
+        /* Launch Button */
         .glass-btn {
             background: #e67e22;
             color: white;
             border: none;
-            padding: 15px;
-            border-radius: 50px;
-            font-weight: 600;
+            padding: 16px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.9rem;
             cursor: pointer;
-            transition: 0.3s;
+            transition: 0.4s;
             text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 10px;
         }
 
-        .glass-btn:hover { background: #f39c12; transform: translateY(-2px); }
-        
-        /* Updated Alert Styling for Success/Error */
-        .alert { 
-            background: rgba(46, 204, 113, 0.2); 
-            border: 1px solid #2ecc71; 
-            color: #2ecc71; 
-            padding: 10px; 
-            border-radius: 8px; 
-            margin-bottom: 15px; 
-            font-size: 0.9rem; 
+        .glass-btn:hover { 
+            background: #fff; 
+            color: #e67e22;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(230, 126, 34, 0.3);
         }
-        .alert-error { border-color: #ff4757; color: #ff4757; background: rgba(255, 71, 87, 0.1); }
         
-        .register-link { display: block; margin-top: 20px; color: #fff; text-decoration: none; opacity: 0.6; font-size: 0.9rem; }
-        .register-link:hover { opacity: 1; }
+        .links-container { margin-top: 30px; }
         
-        .home-link { display: block; margin-top: 10px; color: rgba(255,255,255,0.5); text-decoration: none; font-size: 0.8rem; }
+        .register-link { 
+            color: rgba(255,255,255,0.7); 
+            text-decoration: none; 
+            font-size: 0.9rem; 
+            font-weight: 500;
+            transition: 0.3s;
+        }
+        
+        .register-link span { color: #e67e22; font-weight: 800; }
+        .register-link:hover { color: #fff; }
+        
+        .home-link { 
+            display: block; 
+            margin-top: 20px; 
+            color: rgba(255,255,255,0.3); 
+            text-decoration: none; 
+            font-size: 0.8rem; 
+            transition: 0.3s;
+        }
+        .home-link:hover { color: #fff; }
     </style>
 </head>
 <body>
@@ -82,32 +122,25 @@
     </video>
     <div class="global-overlay"></div>
 
-    <div class="container">
-        <div class="glass-card">
-            <h1>Restaurant Login</h1>
-            <p>Access your partner dashboard</p>
+    <div class="glass-card">
+        <h1>Partner Portal</h1>
+        <div class="subtitle">Vendor Redistribution System</div>
 
-            {% with messages = get_flashed_messages() %}
-              {% if messages %}
-                {% for message in messages %}
-                  <div class="alert {% if 'Invalid' in message or 'failed' in message %}alert-error{% endif %}">
-                      {{ message }}
-                  </div>
-                {% endfor %}
-              {% endif %}
-            {% endwith %}
+        <form method="POST" action="{{ url_for('restaurant_login') }}" class="login-form">
+            
+            <input type="email" name="email" placeholder="Business Email" required autocomplete="username">
+            
+            <input type="password" name="password" placeholder="Access Key" required autocomplete="current-password">
+            
+            <button type="submit" class="glass-btn">LOGIN</button>
+        </form>
 
-            <form method="POST" action="{{ url_for('restaurant_login') }}" class="login-form" autocomplete="off">
-                <input type="email" name="email" placeholder="Business Email" required autocomplete="new-password">
-                <input type="password" name="password" placeholder="Password" required autocomplete="new-password">
-                <button type="submit" class="glass-btn">Login</button>
-            </form>
-
-            <a href="/restaurant/register" class="register-link">
-                Don't have an account? Register here
+        <div class="links-container">
+            <a href="{{ url_for('restaurant_register') }}" class="register-link">
+                New partner? <span>Register Kitchen</span>
             </a>
             
-            <a href="/" class="home-link">← Back to Home</a>
+            <a href="/" class="home-link">← Return to System Home</a>
         </div>
     </div>
 

@@ -1,14 +1,28 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, make_response
+from flask import Flask, render_template, request, redirect, url_for, flash, session, make_response, jsonify
 from flask_socketio import SocketIO, emit 
 import sqlite3
 import os
 import re
 import secrets 
 import string
-from datetime import datetime 
+from datetime import datetime, timezone
+from werkzeug.utils import secure_filename # Added for images
+from geopy.geocoders import Nominatim # Added for City to Location conversion
 
 app = Flask(__name__)
 app.secret_key = 'sunset_servings_key_123'
+
+# Initialize Geocoder
+geolocator = Nominatim(user_agent="sunset_servings_app")
+
+# --- IMAGE CONFIGURATION ---
+UPLOAD_FOLDER = 'static/uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # Initialize SocketIO
 socketio = SocketIO(app, cors_allowed_origins="*") 
@@ -20,18 +34,61 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+# ================= PRICING CALCULATOR ENGINE =================
+def calculate_live_price(item, now):
+    """
+    Calculates the current price based on 5% linear reduction 
+     of the ORIGINAL price every 30 minutes.
+    """
+    try:
+        # 1. Parse creation time (UTC)
+        created_at_str = item['created_at'].split(".")[0]
+        list_time = datetime.strptime(created_at_str, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)
+        
+        # 2. Calculate 30-min intervals
+        diff_seconds = (now - list_time).total_seconds()
+        intervals = int(diff_seconds // 1800) # 1800 seconds = 30 minutes
+        
+        # 3. Logic: Reduce based on ORIGINAL price
+        original_price = float(item['original_price'])
+        starting_discount_price = float(item['discounted_price'])
+        
+        reduction_per_step = original_price * 0.05
+        total_reduction = reduction_per_step * intervals
+        
+        live_price = starting_discount_price - total_reduction
+        
+        # 4. Safety Floor (Never below ₹10 or 15% of original)
+        floor_price = max(10.00, original_price * 0.15)
+        return round(max(live_price, floor_price), 2)
+    except Exception:
+        return item['discounted_price']
+
 # ================= VALIDATION UTILITIES =================
 def is_valid_email(email):
     email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
     if not re.match(email_regex, email):
         return False, "Invalid email format."
-    
     allowed_domains = ['gmail.com', 'outlook.com', 'yahoo.com', 'icloud.com']
     domain = email.split('@')[-1].lower()
     if domain not in allowed_domains:
         return False, f"Domain '@{domain}' is not supported."
-    
     return True, ""
+
+# ================= SUGGESTION API =================
+@app.route("/api/suggestions")
+def get_suggestions():
+    query = request.args.get('q', '').strip()
+    if len(query) < 1:
+        return jsonify({"suggestions": []})
+    conn = get_db_connection()
+    results = conn.execute(
+        "SELECT DISTINCT name FROM food WHERE name LIKE ? AND status='available' LIMIT 5",
+        (f'%{query}%',)
+    ).fetchall()
+    conn.close()
+    suggestions = [row['name'] for row in results]
+    return jsonify({"suggestions": suggestions})
 
 # ================= BASIC PAGES =================
 
@@ -50,7 +107,6 @@ def logout():
     session.clear() 
     flash("You have been successfully logged out.")
     response = make_response(redirect(url_for('index')))
-    # Anti-Cache Headers to prevent back-button access to dashboards
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, post-check=0, pre-check=0'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '-1'
@@ -64,10 +120,23 @@ def register():
         name = request.form.get('name', '').strip()
         email = request.form.get('email', '').strip()
         password = request.form.get('password', '')
+        city = request.form.get('city', '').strip() # Capture City from form
         
-        if not name or not email or not password:
-            flash("All fields are required!")
+        if not all([name, email, password, city]):
+            flash("All fields including city are required!")
             return redirect(url_for('register'))
+
+        # --- GEOCODING LOGIC (Convert City name to Lat/Lon) ---
+        try:
+            location_data = geolocator.geocode(city)
+            if location_data:
+                lat = location_data.latitude
+                lon = location_data.longitude
+            else:
+                flash("Could not find that city. Please try e.g., 'Kochi, Kerala'")
+                return redirect(url_for('register'))
+        except Exception:
+            lat, lon = 0.0, 0.0 # Fallback
 
         valid, msg = is_valid_email(email)
         if not valid:
@@ -76,8 +145,8 @@ def register():
 
         conn = get_db_connection()
         try:
-            conn.execute("INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
-                         (name, email, password))
+            conn.execute("INSERT INTO users (name, email, password, lat, lon) VALUES (?, ?, ?, ?, ?)",
+                         (name, email, password, lat, lon))
             conn.commit()
             flash("Registration successful! Please login.")
             return redirect(url_for('login'))
@@ -125,17 +194,29 @@ def restaurant_register():
             conn.close()
     return render_template("restaurant_register.html")
 
-# ================= CUSTOMER DASHBOARD & ORDER HISTORY =================
+# ================= CUSTOMER DASHBOARD =================
 
 @app.route("/customer/home")
 def customer_home():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    food_query = request.args.get('food', '')
-    location_query = request.args.get('location', '')
+    food_query = request.args.get('food', '').strip()
+    location_query = request.args.get('location', '').strip()
     
     conn = get_db_connection()
+    
+    # --- FETCH USER DATA ---
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (session['user_id'],)).fetchone()
+
+    cart = session.get('cart', {})
+    active_restaurant_id = None
+    if cart:
+        first_item_id = int(next(iter(cart)))
+        res_check = conn.execute("SELECT restaurant_id FROM food WHERE id = ?", (first_item_id,)).fetchone()
+        if res_check:
+            active_restaurant_id = res_check['restaurant_id']
+
     query = """
         SELECT f.*, r.name as restaurant_name, r.address as location, r.lat, r.lon
         FROM food f 
@@ -143,28 +224,55 @@ def customer_home():
         WHERE f.status='available' AND f.quantity > 0
     """
     params = []
+
+    if active_restaurant_id:
+        query += " AND f.restaurant_id = ?"
+        params.append(active_restaurant_id)
+
     if food_query:
-        query += " AND f.name LIKE ?"
-        params.append(f'%{food_query}%')
+        search_term = food_query.lower()
+        if search_term == 'veg':
+            query += " AND f.food_type = 'Veg'"
+        elif search_term == 'non-veg':
+            query += " AND f.food_type = 'Non-Veg'"
+        elif search_term in ['meals', 'bakery', 'drinks', 'juice']:
+            query += " AND f.category = ?"
+            mapped_cat = 'Drinks' if search_term in ['juice', 'drinks'] else food_query.capitalize()
+            params.append(mapped_cat)
+        else:
+            query += " AND (f.name LIKE ? OR f.category LIKE ? OR f.food_type LIKE ?)"
+            params.extend([f'%{food_query}%', f'%{food_query}%', f'%{food_query}%'])
+        
     if location_query:
         query += " AND r.address LIKE ?"
         params.append(f'%{location_query}%')
 
-    foods = conn.execute(query + " ORDER BY f.id DESC", params).fetchall()
+    rows = conn.execute(query + " ORDER BY f.id DESC", params).fetchall()
     conn.close()
 
-    locations_data = [
-        {
-            'food_name': row['name'],
-            'restaurant_name': row['restaurant_name'],
-            'address': row['location'],
-            'lat': row['lat'],
-            'lon': row['lon'],
-            'price': row['discounted_price']
-        } for row in foods if row['lat'] is not None
-    ]
+    processed_foods = []
+    now = datetime.now(timezone.utc)
 
-    return render_template("customer_home.html", foods=foods, locations_json=locations_data)
+    for row in rows:
+        item = dict(row)
+        item['live_price'] = calculate_live_price(item, now)
+        processed_foods.append(item)
+
+    locations_json = []
+    for f in processed_foods:
+        if f['lat'] is not None:
+            locations_json.append({
+                'food_name': f['name'],
+                'restaurant_name': f['restaurant_name'],
+                'address': f['location'],
+                'lat': f['lat'],
+                'lon': f['lon'],
+                'price': f['live_price'],
+                'original_price': f['original_price'],
+                'food_type': f.get('food_type', 'Non-Veg')
+            })
+
+    return render_template("customer_home.html", foods=processed_foods, locations_json=locations_json, user=user)
 
 @app.route("/customer/orders")
 def customer_orders():
@@ -172,7 +280,6 @@ def customer_orders():
         return redirect(url_for('login'))
     
     conn = get_db_connection()
-    # Pulling orders with coordinates for the universal navigation link
     orders = conn.execute("""
         SELECT o.*, r.name as restaurant_name, r.address as restaurant_address, r.lat, r.lon, f.name as food_name
         FROM orders o
@@ -183,7 +290,6 @@ def customer_orders():
     """, (session['user_id'],)).fetchall()
     conn.close()
 
-    # FIX: Grouping logic to ensure "orders" is a dict for the loop
     grouped_orders = {}
     for order in orders:
         token = order['token']
@@ -207,28 +313,59 @@ def customer_orders():
     return render_template("customer_orders.html", orders=grouped_orders)
 
 # ================= CART & CHECKOUT LOGIC =================
-
+@app.route('/remove_from_cart/<int:food_id>')
+def remove_from_cart(food_id):
+    if 'cart' in session:
+        food_id_str = str(food_id)
+        if food_id_str in session['cart']:
+            session['cart'].pop(food_id_str)
+            session.modified = True
+            flash("Item removed from your bag.")
+    return redirect(url_for('checkout'))
+    
 @app.route('/add_to_cart/<int:food_id>', methods=['POST'])
 def add_to_cart(food_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
     qty = int(request.form.get('order_quantity', 1))
+    conn = get_db_connection()
+    new_item = conn.execute("SELECT restaurant_id, name FROM food WHERE id = ?", (food_id,)).fetchone()
+    
+    if not new_item:
+        conn.close()
+        flash("Item not found.")
+        return redirect(url_for('customer_home'))
+
     if 'cart' not in session:
         session['cart'] = {}
-    
     cart = session['cart']
+
+    if cart:
+        first_item_id = int(next(iter(cart)))
+        existing_item = conn.execute("SELECT restaurant_id FROM food WHERE id = ?", (first_item_id,)).fetchone()
+        if existing_item and existing_item['restaurant_id'] != new_item['restaurant_id']:
+            conn.close()
+            flash("You can only add items from one restaurant at a time!")
+            return redirect(url_for('customer_home'))
+
+    conn.close()
     cart[str(food_id)] = cart.get(str(food_id), 0) + qty
     session['cart'] = cart
     session.modified = True
-    flash("Item added to cart!")
+    flash(f"Added {new_item['name']} to rescue bag!")
+    return redirect(url_for('customer_home'))
+
+@app.route('/clear_cart')
+def clear_cart():
+    session.pop('cart', None)
+    flash("Cart cleared.")
     return redirect(url_for('customer_home'))
 
 @app.route('/checkout', methods=['GET'])
 def checkout():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-        
     if not session.get('cart'):
         flash("Your cart is empty.")
         return redirect(url_for('customer_home'))
@@ -237,54 +374,54 @@ def checkout():
     cart_items = []
     grand_total = 0
     restaurant_info = None 
+    now = datetime.now(timezone.utc)
     
     for food_id_str, qty in session['cart'].items():
-        item = conn.execute("""
-            SELECT f.*, r.name as restaurant_name, r.address as restaurant_address 
+        item_row = conn.execute("""
+            SELECT f.*, r.name as restaurant_name, r.address as restaurant_address, r.closing_time 
             FROM food f JOIN restaurants r ON f.restaurant_id = r.id 
             WHERE f.id = ?""", (int(food_id_str),)).fetchone()
         
-        if item:
+        if item_row:
+            item = dict(item_row)
             if not restaurant_info:
-                restaurant_info = {'name': item['restaurant_name'], 'address': item['restaurant_address']}
-            total = item['discounted_price'] * qty
+                restaurant_info = {
+                    'name': item['restaurant_name'], 
+                    'address': item['restaurant_address'],
+                    'closing_time': item['closing_time']
+                }
+            current_price = calculate_live_price(item, now)
+            total = current_price * qty
             grand_total += total
-            cart_items.append({'details': item, 'qty': qty, 'item_total': total})
+            cart_items.append({'details': item, 'qty': qty, 'item_total': total, 'current_price': current_price})
     conn.close()
-    
     order_time = datetime.now().strftime("%d %b %Y, %I:%M %p")
-    return render_template("checkout.html", items=cart_items, grand_total=grand_total, 
-                           restaurant=restaurant_info, order_time=order_time)
+    return render_template("checkout.html", items=cart_items, grand_total=grand_total, restaurant=restaurant_info, order_time=order_time)
 
 @app.route('/confirm_order', methods=['POST'])
 def confirm_order():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-
+    if 'user_id' not in session: return redirect(url_for('login'))
     conn = get_db_connection()
     overall_total = 0
     order_token = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+    now = datetime.now(timezone.utc)
     
     try:
         for f_id, qty in session['cart'].items():
-            food = conn.execute("SELECT * FROM food WHERE id = ?", (int(f_id),)).fetchone()
-            if food and food['quantity'] >= qty:
-                new_qty = food['quantity'] - qty
-                conn.execute("UPDATE food SET quantity = ?, status = ? WHERE id = ?", 
-                             (new_qty, 'sold' if new_qty == 0 else 'available', f_id))
-                
-                total = food['discounted_price'] * qty
-                overall_total += total
-                
-                conn.execute("""INSERT INTO orders (user_id, food_id, restaurant_id, quantity, total_price, token, status) 
-                                VALUES (?, ?, ?, ?, ?, ?, 'pending')""",
-                             (session['user_id'], f_id, food['restaurant_id'], qty, total, order_token))
-        
+            food_row = conn.execute("SELECT * FROM food WHERE id = ?", (int(f_id),)).fetchone()
+            if food_row:
+                food = dict(food_row)
+                if food['quantity'] >= qty:
+                    purchase_price = calculate_live_price(food, now)
+                    new_qty = food['quantity'] - qty
+                    conn.execute("UPDATE food SET quantity = ?, status = ? WHERE id = ?", (new_qty, 'sold' if new_qty == 0 else 'available', f_id))
+                    total = purchase_price * qty
+                    overall_total += total
+                    conn.execute("INSERT INTO orders (user_id, food_id, restaurant_id, quantity, total_price, token, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')",
+                                 (session['user_id'], f_id, food['restaurant_id'], qty, total, order_token))
         conn.commit()
         session.pop('cart', None)
-        # Real-time Order Alert for Vendor
         socketio.emit('new_order_alert', {'message': f"New order: {order_token}", 'amount': f"{overall_total:.2f}"})
-        # Instant Redirect to History
         return redirect(url_for('customer_orders')) 
     except Exception as e:
         conn.rollback()
@@ -293,7 +430,20 @@ def confirm_order():
     finally:
         conn.close()
 
-# ================= VENDOR DASHBOARD & ORDERS =================
+# ================= VENDOR DASHBOARD =================
+
+@app.route("/vendor/update_settings", methods=['POST'])
+def update_settings():
+    if 'restaurant_id' not in session:
+        return redirect(url_for('restaurant_login'))
+    
+    closing_time = request.form.get('closing_time')
+    conn = get_db_connection()
+    conn.execute("UPDATE restaurants SET closing_time = ? WHERE id = ?", (closing_time, session['restaurant_id']))
+    conn.commit()
+    conn.close()
+    flash("Closing time updated!")
+    return redirect(url_for('vendor_dashboard'))
 
 @app.route("/vendor/dashboard", methods=['GET', 'POST'])
 def vendor_dashboard():
@@ -302,52 +452,64 @@ def vendor_dashboard():
 
     conn = get_db_connection()
     res_id = session['restaurant_id'] 
-    
-    # SAFETY FIX: Prevents subscription error if restaurant is deleted
-    restaurant_info = conn.execute("SELECT name FROM restaurants WHERE id = ?", (res_id,)).fetchone()
-    if not restaurant_info:
-        session.clear()
-        flash("Restaurant account not found.")
-        return redirect(url_for('restaurant_login'))
+    restaurant_info = conn.execute("SELECT * FROM restaurants WHERE id = ?", (res_id,)).fetchone()
 
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
-        price = request.form.get('price')
+        orig_price = request.form.get('original_price')
+        disc_price = request.form.get('price')
         qty = int(request.form.get('quantity', 0))
+        category = request.form.get('category', 'Meals')
+        food_type = request.form.get('food_type', 'Non-Veg')
+        
+        file = request.files.get('food_image')
+        image_url = 'default_food.jpg'
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            image_url = filename
 
-        if name and price and qty > 0:
-            existing = conn.execute("SELECT id, quantity FROM food WHERE restaurant_id = ? AND LOWER(name) = ? AND status = 'available'", (res_id, name.lower())).fetchone()
-            if existing:
-                conn.execute("UPDATE food SET quantity = ?, discounted_price = ?, name = ? WHERE id = ?", (existing['quantity'] + qty, price, name, existing['id']))
-            else:
-                conn.execute("INSERT INTO food (restaurant_id, name, discounted_price, quantity, status) VALUES (?,?,?,?,?)", (res_id, name, price, qty, 'available'))
+        if name and disc_price and qty > 0:
+            now_utc = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+            conn.execute("""INSERT INTO food (restaurant_id, name, original_price, discounted_price, quantity, status, created_at, category, food_type, image_url) 
+                         VALUES (?,?,?,?,?,?,?,?,?,?)""", 
+                         (res_id, name, orig_price, disc_price, qty, 'available', now_utc, category, food_type, image_url))
             conn.commit()
+            flash(f"Listed {name} successfully!")
 
-    # Dynamic Revenue Tracking
+    food_items = conn.execute("SELECT * FROM food WHERE restaurant_id = ? AND status='available' ORDER BY id DESC", (res_id,)).fetchall()
     stats = conn.execute("SELECT SUM(total_price) as revenue, COUNT(*) as count FROM orders WHERE restaurant_id = ? AND status = 'collected'", (res_id,)).fetchone()
     total_revenue = stats['revenue'] if stats['revenue'] else 0
     meals_saved = stats['count'] if stats['count'] else 0
-
-    food_items = conn.execute("SELECT * FROM food WHERE restaurant_id = ? AND status='available' ORDER BY id DESC", (res_id,)).fetchall()
     conn.close()
     return render_template("vendor_dashboard.html", food_items=food_items, restaurant_name=restaurant_info['name'], total_revenue=total_revenue, meals_saved=meals_saved)
+
+@app.route("/reduce-stock/<int:item_id>", methods=['POST'])
+def reduce_stock(item_id):
+    if 'restaurant_id' not in session: return redirect(url_for('restaurant_login'))
+    reduce_amount = int(request.form.get('reduce_amount', 1))
+    conn = get_db_connection()
+    item = conn.execute("SELECT name, quantity FROM food WHERE id = ? AND restaurant_id = ?", (item_id, session['restaurant_id'])).fetchone()
+    if item and item['quantity'] >= reduce_amount:
+        new_qty = item['quantity'] - reduce_amount
+        conn.execute("UPDATE food SET quantity = ?, status = ? WHERE id = ?", (new_qty, 'available' if new_qty > 0 else 'sold', item_id))
+        conn.commit()
+        flash(f"Reduced {item['name']} stock.")
+    conn.close()
+    return redirect(url_for('vendor_dashboard'))
 
 @app.route("/vendor/orders")
 def vendor_orders():
     if 'restaurant_id' not in session: return redirect(url_for('restaurant_login'))
     conn = get_db_connection()
     raw = conn.execute("""SELECT o.*, u.name as customer_name, f.name as food_name 
-                          FROM orders o 
-                          JOIN users u ON o.user_id = u.id 
-                          JOIN food f ON o.food_id = f.id 
-                          WHERE o.restaurant_id = ? AND o.status = 'pending'""", 
-                       (session['restaurant_id'],)).fetchall()
+                          FROM orders o JOIN users u ON o.user_id = u.id JOIN food f ON o.food_id = f.id 
+                          WHERE o.restaurant_id = ? AND o.status = 'pending'""", (session['restaurant_id'],)).fetchall()
     conn.close()
     grouped = {}
     for r in raw:
         t = r['token']
-        if t not in grouped: 
-            grouped[t] = {'customer': r['customer_name'], 'time': r['created_at'], 'food_list': [], 'grand_total': 0}
+        if t not in grouped: grouped[t] = {'customer': r['customer_name'], 'time': r['created_at'], 'food_list': [], 'grand_total': 0}
         grouped[t]['food_list'].append({'name': r['food_name'], 'qty': r['quantity'], 'subtotal': r['total_price']})
         grouped[t]['grand_total'] += r['total_price']
     return render_template("vendor_orders.html", orders=grouped)
@@ -361,7 +523,24 @@ def complete_order(token):
     conn.close()
     return redirect(url_for('vendor_orders'))
 
-# ================= AUTHENTICATION =================
+# ================= DATABASE AUTO-FIX =================
+def ensure_columns_exist():
+    conn = get_db_connection()
+    try:
+        columns_to_add = [
+            ("restaurants", "category", "TEXT"), ("restaurants", "phone", "TEXT"), ("restaurants", "lat", "REAL"), ("restaurants", "lon", "REAL"), ("restaurants", "closing_time", "TEXT"),
+            ("orders", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+            ("users", "lat", "REAL"), ("users", "lon", "REAL"),
+            ("food", "original_price", "REAL"), ("food", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"), ("food", "category", "TEXT DEFAULT 'Meals'"), ("food", "food_type", "TEXT DEFAULT 'Non-Veg'"), ("food", "image_url", "TEXT DEFAULT 'default_food.jpg'")
+        ]
+        for table, col, col_type in columns_to_add:
+            try: conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}")
+            except sqlite3.OperationalError: pass 
+        conn.commit()
+    finally:
+        conn.close()
+
+# ================= LOGIN LOGIC =================
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -372,7 +551,7 @@ def login():
         user = conn.execute("SELECT * FROM users WHERE email=? AND password=?", (email, password)).fetchone()
         conn.close()
         if user:
-            session.clear()
+            session.pop('restaurant_id', None) 
             session['user_id'] = user['id'] 
             return redirect(url_for("customer_home"))
         flash("Invalid login credentials")
@@ -387,34 +566,11 @@ def restaurant_login():
         res = conn.execute("SELECT * FROM restaurants WHERE email=? AND password=?", (email, password)).fetchone()
         conn.close()
         if res:
-            session.clear()
+            session.pop('user_id', None)
             session['restaurant_id'] = res['id']  
             return redirect(url_for("vendor_dashboard"))
         flash("Invalid restaurant login")
     return render_template("restaurant_login.html")
-
-# ================= DATABASE AUTO-FIX =================
-def ensure_columns_exist():
-    conn = get_db_connection()
-    try:
-        # Schema migration guard
-        columns_to_add = [
-            ("restaurants", "category", "TEXT"),
-            ("restaurants", "phone", "TEXT"),
-            ("restaurants", "lat", "REAL"),
-            ("restaurants", "lon", "REAL"),
-            ("orders", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-        ]
-        for table, col, col_type in columns_to_add:
-            try:
-                conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}")
-            except sqlite3.OperationalError:
-                pass 
-        conn.commit()
-    except Exception as e:
-        print(f"Migration error: {e}")
-    finally:
-        conn.close()
 
 if __name__ == "__main__":
     ensure_columns_exist() 
