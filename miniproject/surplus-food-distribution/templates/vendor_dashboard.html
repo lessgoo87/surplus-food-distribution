@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendor Dashboard | Sunset Servings</title>
+    <style>
+        /* High-quality Glassmorphism & UI System */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
+        body { background-color: #000; color: #fff; line-height: 1.6; overflow-x: hidden; }
+        
+        .bg-video { position: fixed; top: 50%; left: 50%; min-width: 100%; min-height: 100%; transform: translate(-50%, -50%); z-index: -2; object-fit: cover; }
+        .global-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.75); z-index: -1; }
+        
+        .container { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; }
+        
+        .glass-panel { 
+            background: rgba(15, 15, 15, 0.8);
+            backdrop-filter: blur(25px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            border-radius: 30px; 
+            padding: 40px; 
+            max-width: 1000px; 
+            width: 100%; 
+            box-shadow: 0 25px 50px rgba(0,0,0,0.8);
+        }
+
+        /* FLASH MESSAGE STYLING */
+        .flash-message {
+            background: rgba(230, 126, 34, 0.15);
+            border: 1px solid #e67e22;
+            color: #e67e22;
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            text-align: center;
+            font-weight: 800;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        h2 { font-size: 3rem; margin-bottom: 5px; text-align: center; font-weight: 900; background: linear-gradient(180deg, #fff, #e67e22); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .restaurant-title { text-align: center; color: #e67e22; font-weight: bold; margin-bottom: 30px; font-size: 1.1rem; letter-spacing: 3px; text-transform: uppercase; }
+        
+        /* ANALYTICS */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 20px; text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: 800; color: #e67e22; }
+        .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px; opacity: 0.5; }
+
+        /* SETTINGS BAR VISIBILITY FIXES */
+        .settings-bar { background: rgba(230, 126, 34, 0.05); border: 1px solid rgba(230, 126, 34, 0.2); border-radius: 15px; padding: 15px 25px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .time-picker-custom {
+            width: auto !important; 
+            padding: 8px 12px !important; 
+            background: #1a1a1a !important; 
+            border: 1px solid #e67e22 !important; 
+            color: white !important; 
+            border-radius: 8px;
+            font-weight: bold;
+            color-scheme: dark; /* Forces white UI in most browsers */
+        }
+
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(48%) sepia(89%) saturate(1500%) hue-rotate(1deg) brightness(100%) contrast(100%);
+            cursor: pointer;
+        }
+
+        .btn-orders { display: block; text-align: center; padding: 15px; background: rgba(46, 204, 113, 0.1); border: 1px solid #2ecc71; color: #2ecc71; text-decoration: none; border-radius: 50px; font-weight: 800; text-transform: uppercase; font-size: 0.8rem; margin-bottom: 30px; transition: 0.3s; }
+        .btn-orders:hover { background: #2ecc71; color: #000; }
+
+        /* FORM SECTION */
+        .form-section { background: rgba(255,255,255,0.02); padding: 30px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 40px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 8px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; color: #e67e22; letter-spacing: 1px; }
+        
+        input, select { width: 100%; padding: 12px 18px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: #fff; outline: none; }
+        input:focus { border-color: #e67e22; }
+
+        /* UPLOAD AREA */
+        .upload-box { margin: 15px 0; padding: 15px; border: 2px dashed rgba(230, 126, 34, 0.3); border-radius: 15px; text-align: center; transition: 0.3s; }
+        .upload-box:hover { border-color: #e67e22; background: rgba(230, 126, 34, 0.05); }
+
+        .btn-submit { width: 100%; padding: 16px; background: #e67e22; color: white; border: none; border-radius: 50px; font-weight: 800; text-transform: uppercase; cursor: pointer; transition: 0.4s; }
+        .btn-submit:hover { background: #fff; color: #e67e22; transform: translateY(-3px); }
+
+        /* TABLE */
+        .food-list { width: 100%; border-collapse: collapse; }
+        .food-list th { padding: 15px; color: rgba(255,255,255,0.3); font-size: 0.65rem; text-transform: uppercase; text-align: left; }
+        .food-list td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
+        
+        .item-thumb { width: 50px; height: 50px; border-radius: 8px; object-fit: cover; border: 1px solid rgba(255,255,255,0.1); margin-right: 12px; }
+
+        .logout-link { color: #ff4757; text-decoration: none; font-weight: 800; border: 1px solid #ff4757; padding: 10px 30px; border-radius: 50px; transition: 0.3s; margin-top: 40px; display: inline-block; font-size: 0.8rem; }
+        .logout-link:hover { background: #ff4757; color: #fff; }
+
+        #order-notification-bar { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); z-index: 1000; width: 90%; max-width: 500px; background: #e67e22; border-radius: 18px; padding: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); transition: top 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; align-items: center; gap: 15px; }
+        #order-notification-bar.show { top: 30px; }
+    </style>
+</head>
+<body>
+
+    <div id="order-notification-bar">
+        <span style="font-size: 1.5rem;">🚨</span>
+        <div style="flex-grow: 1;"><strong id="notif-message">New Order!</strong><p style="font-size: 0.8rem; opacity: 0.9;">Update dashboard to process.</p></div>
+        <button onclick="location.reload()" style="background:white; border:none; color:#e67e22; padding:5px 15px; border-radius:20px; font-weight:800; cursor:pointer;">REFRESH</button>
+    </div>
+
+    <video autoplay muted loop playsinline class="bg-video"><source src="{{ url_for('static', filename='video/food.mp4') }}" type="video/mp4"></video>
+    <div class="global-overlay"></div>
+
+    <div class="container">
+        <div class="glass-panel">
+            
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                {% for message in messages %}
+                  <div class="flash-message">✅ {{ message }}</div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <h2>Vendor Portal</h2>
+            <p class="restaurant-title">{{ restaurant_name }}</p>
+
+            <div class="settings-bar">
+                <div><label style="margin-bottom:0">Pickup Deadline</label><p style="font-size: 0.75rem; opacity: 0.6;">Customers must collect by this time.</p></div>
+                
+                <form action="{{ url_for('update_settings') }}" method="POST" style="display: flex; gap: 10px; align-items: center;">
+                    <input type="time" name="closing_time" 
+                           value="{{ closing_time if closing_time else '22:00' }}" 
+                           class="time-picker-custom" required>
+                    <button type="submit" style="background:#e67e22; border:none; color:white; padding:8px 18px; border-radius:8px; font-weight:700; cursor:pointer;">SAVE</button>
+                </form>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card"><span class="stat-value">₹{{ "%.2f"|format(total_revenue) }}</span><br><span class="stat-label">Total Revenue</span></div>
+                <div class="stat-card"><span class="stat-value">{{ meals_saved }}</span><br><span class="stat-label">Meals Saved</span></div>
+            </div>
+
+            <a href="{{ url_for('vendor_orders') }}" class="btn-orders">📦 Check Incoming Rescue Orders</a>
+
+            <div class="form-section">
+                <form method="POST" action="{{ url_for('vendor_dashboard') }}" enctype="multipart/form-data">
+                    <div class="form-group"><label>Product Name</label><input type="text" name="name" placeholder="e.g. Gourmet Veg Burger" required></div>
+                    
+                    <div class="grid-3">
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select name="category" required>
+                                <option value="Meals">🥘 Full Meals</option>
+                                <option value="Bakery">🍰 Bakery</option>
+                                <option value="Drinks">🥤 Beverages</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Dietary Type</label>
+                            <select name="food_type">
+                                <option value="Veg">🟢 Veg</option>
+                                <option value="Non-Veg" selected>🔴 Non-Veg</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>Quantity</label><input type="number" name="quantity" min="1" placeholder="10" required></div>
+                    </div>
+
+                    <div class="grid-3" style="grid-template-columns: 1fr 1fr 2fr;">
+                        <div class="form-group"><label>Original (₹)</label><input type="number" step="0.01" name="original_price" required></div>
+                        <div class="form-group"><label>Sale (₹)</label><input type="number" step="0.01" name="price" required></div>
+                        <div class="form-group">
+                            <label>📸 Upload Food Image</label>
+                            <div class="upload-box">
+                                <input type="file" name="food_image" accept="image/*" style="border:none; padding:0; background:transparent;">
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-submit">List Surplus Food</button>
+                </form>
+            </div>
+
+            <table class="food-list">
+                <thead><tr><th>Item Preview</th><th>Price Breakdown</th><th>Stock</th><th>Action</th></tr></thead>
+                <tbody>
+                    {% for item in food_items %}
+                    <tr>
+                        <td>
+                            <div style="display: flex; align-items: center;">
+                                <img src="{{ url_for('static', filename='uploads/' + (item.image_url or 'default_food.jpg')) }}" class="item-thumb">
+                                <div>
+                                    <div style="font-weight: 700; font-size: 0.95rem;">{{ item.name }}</div>
+                                    <span style="font-size: 0.6rem; opacity: 0.5; text-transform: uppercase;">{{ item.category }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span style="text-decoration: line-through; opacity: 0.4; font-size: 0.75rem;">₹{{ item.original_price }}</span><br>
+                            <span style="color: #2ecc71; font-weight: 800;">₹{{ item.discounted_price }}</span>
+                        </td>
+                        <td style="font-weight: 800; color: #e67e22;">{{ item.quantity }} Left</td>
+                        <td>
+                            <form action="{{ url_for('reduce_stock', item_id=item.id) }}" method="POST" style="display: flex; gap: 5px;">
+                                <input type="number" name="reduce_amount" value="1" min="1" max="{{ item.quantity }}" style="width: 45px; padding: 5px; font-size: 0.7rem;">
+                                <button type="submit" style="background:rgba(255,71,87,0.15); border:1px solid #ff4757; color:#ff4757; border-radius:5px; padding:2px 8px; cursor:pointer; font-size:0.6rem; font-weight:800;">REDUCE</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <div style="text-align: center;"><a href="{{ url_for('logout') }}" class="logout-link">Exit System</a></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+        socket.on('new_order_alert', function(data) {
+            document.getElementById('notif-message').innerText = "Order Received: " + data.amount;
+            document.getElementById('order-notification-bar').classList.add('show');
+        });
+    </script>
+</body>
+</html>

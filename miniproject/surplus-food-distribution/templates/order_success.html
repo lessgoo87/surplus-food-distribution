@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Confirmed | Sunset Servings</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #000; color: #fff; overflow-x: hidden; height: 100vh; display: flex; align-items: center; justify-content: center; }
+
+        .bg-video { position: fixed; top: 50%; left: 50%; min-width: 100%; min-height: 100%; transform: translate(-50%, -50%); z-index: -2; object-fit: cover; }
+        .global-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: -1; }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            padding: 40px;
+            max-width: 450px;
+            width: 95%;
+            text-align: center;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .icon-success { font-size: 4rem; color: #2ecc71; margin-bottom: 10px; display: block; }
+        h1 { font-size: 2rem; margin-bottom: 10px; color: #fff; }
+        
+        .token-container {
+            background: rgba(230, 126, 34, 0.15);
+            border: 2px dashed #e67e22;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .token-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; color: #e67e22; margin-bottom: 5px; }
+        .token-value { font-size: 3rem; font-weight: 800; letter-spacing: 8px; color: #fff; text-shadow: 0 0 15px rgba(230, 126, 34, 0.5); }
+
+        .order-details {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+            text-align: left;
+        }
+
+        .item-list { margin: 10px 0; padding-left: 5px; border-left: 2px solid #e67e22; }
+        .item-list-row { font-size: 0.85rem; opacity: 0.8; margin-bottom: 8px; display: flex; justify-content: space-between; }
+        .item-qty { background: rgba(230, 126, 34, 0.2); color: #e67e22; padding: 1px 6px; border-radius: 4px; font-weight: bold; margin-right: 5px; }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #e67e22;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 10px;
+        }
+
+        .btn-home {
+            display: inline-block;
+            padding: 15px 25px;
+            background: #e67e22;
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: 0.3s;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        .btn-history {
+            display: inline-block;
+            padding: 12px 25px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+
+        .btn-home:hover { background: #f39c12; transform: translateY(-3px); }
+        .pickup-note { font-size: 0.85rem; opacity: 0.7; margin-top: 15px; line-height: 1.4; }
+    </style>
+    <script>
+        // Security logic for browser navigation
+        window.onpageshow = function(event) {
+            if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+                window.location.reload();
+            }
+        };
+    </script>
+</head>
+<body>
+
+    <video autoplay muted loop playsinline class="bg-video">
+        <source src="{{ url_for('static', filename='video/food.mp4') }}" type="video/mp4">
+    </video>
+    <div class="global-overlay"></div>
+
+    <div class="glass-card">
+        <span class="icon-success">✔</span>
+        <h1>Order Reserved!</h1>
+        
+        <div class="token-container">
+            <p class="token-label">Pickup Token</p>
+            <h2 class="token-value">{{ token }}</h2>
+        </div>
+
+        <div class="order-details">
+            <h3 style="margin-bottom: 15px; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; color: #e67e22;">Parcel Summary</h3>
+            
+            <div class="item-list">
+                {% for item in items %}
+                <div class="item-list-row">
+                    <span><span class="item-qty">{{ item.qty }}x</span> {{ item.name }}</span>
+                    <span>₹{{ "%.2f"|format(item.price) }}</span>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="total-row">
+                <span>Total:</span>
+                <span>₹{{ "%.2f"|format(amount) }}</span>
+            </div>
+            
+            <p style="font-size: 0.75rem; opacity: 0.6; margin-top: 10px; text-align: center;">
+                Payment Method: <strong>Pay at Counter</strong>
+            </p>
+        </div>
+
+        <a href="{{ url_for('customer_home') }}" class="btn-home">Explore More Food</a>
+        <a href="{{ url_for('customer_orders') }}" class="btn-history">📋 View Order History</a>
+        
+        <p class="pickup-note">
+            Please show this <strong>Token</strong> at the counter to collect your items. 
+            Don't worry, you can find this code in <strong>Order History</strong> later.
+        </p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Orders | Sunset Servings</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #000; color: #fff; line-height: 1.6; }
+        .bg-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #000 0%, #1a1a1a 100%); z-index: -1; }
+        .container { padding: 40px 20px; max-width: 1200px; margin: auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 20px; }
+        h1 { color: #e67e22; font-size: 2rem; }
+        .back-link { color: #fff; text-decoration: none; opacity: 0.7; transition: 0.3s; }
+        .back-link:hover { opacity: 1; color: #e67e22; }
+        .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 25px; }
+        .order-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            transition: 0.3s;
+        }
+        .order-card:hover { border-color: #e67e22; transform: translateY(-5px); }
+        .token-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+        .token-badge { background: #e67e22; color: #fff; padding: 6px 14px; border-radius: 8px; font-weight: 800; letter-spacing: 2px; font-size: 1.2rem; box-shadow: 0 4px 10px rgba(230, 126, 34, 0.3); }
+        .customer-meta { font-size: 0.9rem; }
+        .customer-name { display: block; font-weight: bold; font-size: 1.1rem; }
+        .order-time { font-size: 0.75rem; opacity: 0.5; }
+        .items-area { flex-grow: 1; margin: 15px 0; padding: 15px 0; border-top: 1px dashed rgba(255,255,255,0.1); border-bottom: 1px dashed rgba(255,255,255,0.1); }
+        .item-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.95rem; }
+        .qty-circle { background: rgba(230, 126, 34, 0.2); color: #e67e22; padding: 2px 8px; border-radius: 50%; font-size: 0.8rem; font-weight: bold; margin-right: 8px; }
+        .total-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+        .grand-total { color: #2ecc71; font-size: 1.4rem; font-weight: 800; }
+        .btn-complete {
+            width: 100%; margin-top: 20px; padding: 12px;
+            background: transparent; border: 2px solid #2ecc71; color: #2ecc71;
+            border-radius: 50px; cursor: pointer; font-weight: bold; transition: 0.3s;
+            text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;
+        }
+        .btn-complete:hover { background: #2ecc71; color: #fff; box-shadow: 0 5px 15px rgba(46, 204, 113, 0.3); }
+        .empty-state { text-align: center; grid-column: 1/-1; padding: 80px 0; opacity: 0.4; }
+        .alert { padding: 15px; margin-bottom: 20px; border-radius: 10px; text-align: center; background: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; color: #2ecc71; }
+    </style>
+</head>
+<body>
+    <div class="bg-overlay"></div>
+    <div class="container">
+        <header class="header">
+            <h1>Pending Pickups</h1>
+            <a href="{{ url_for('vendor_dashboard') }}" class="back-link">← Vendor Dashboard</a>
+        </header>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="orders-grid">
+            {% for token, data in orders.items() %}
+            <div class="order-card">
+                <div class="token-header">
+                    <div class="customer-meta">
+                        <span class="customer-name">{{ data.customer }}</span>
+                        <span class="order-time">Received: {{ data.time }}</span>
+                    </div>
+                    <div class="token-badge">{{ token }}</div>
+                </div>
+
+                <div class="items-area">
+                    {% for item in data.food_list %}
+                    <div class="item-row">
+                        <span><span class="qty-circle">{{ item.qty }}</span> {{ item.name }}</span>
+                        <span>₹{{ "%.2f"|format(item.subtotal) }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="total-footer">
+                    <span style="opacity: 0.6;">To Collect:</span>
+                    <span class="grand-total">₹{{ "%.2f"|format(data.grand_total) }}</span>
+                </div>
+
+                <form action="{{ url_for('complete_order', token=token) }}" method="POST">
+                    <button type="submit" class="btn-complete">Mark as Collected</button>
+                </form>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <img src="https://cdn-icons-png.flaticon.com/512/5058/5058432.png" width="100" style="filter: invert(1); margin-bottom: 20px;">
+                <h2>All clear! No orders waiting for pickup.</h2>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>
